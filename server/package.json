@@ -1,0 +1,30 @@
+{
+  "name": "server",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "nodemon src/index.js",
+    "start": "node src/index.js",
+    "lint": "eslint . --ext .js",
+    "format": "prettier --write \"**/*.{js,json,md,yml,yaml}\""
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.1",
+    "express": "^5.1.0",
+    "mongoose": "^8.17.2",
+    "nanoid": "^5.1.5",
+    "pino": "^9.9.0",
+    "zod": "^4.0.17"
+  },
+  "devDependencies": {
+    "eslint": "^9.33.0",
+    "nodemon": "^3.1.10"
+  }
+}
