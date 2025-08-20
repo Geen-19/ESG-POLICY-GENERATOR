@@ -1,68 +1,43 @@
-:root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+/* ---- v4-safe utility aliases (no slash-opacities in @apply) ---- */
 
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+.card {
+  /* structure + effects via @apply */
+  @apply rounded-2xl backdrop-blur border shadow-sm;
+  /* colors via plain CSS with alpha */
+  background-color: rgb(255 255 255 / 0.70);
+  border-color: rgb(0 0 0 / 0.05);
 }
-
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
+.dark .card {
+  background-color: rgb(24 24 27 / 0.50); /* ~ zinc-900/50 */
+  border-color: rgb(255 255 255 / 0.10);
 }
 
-body {
-  margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
+.btn-primary {
+  @apply inline-flex items-center gap-2 rounded-xl px-4 py-2 font-medium text-white bg-black hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed;
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+.input {
+  @apply w-full rounded-xl border bg-white dark:bg-zinc-900 px-3 py-2 outline-none;
+  border-color: rgb(0 0 0 / 0.10);
 }
+.dark .input { border-color: rgb(255 255 255 / 0.10); }
+.input:focus { box-shadow: 0 0 0 4px rgb(0 0 0 / 0.10); }
+.dark .input:focus { box-shadow: 0 0 0 4px rgb(255 255 255 / 0.10); }
 
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
-}
+/* TipTap surface */
+.editor-surface { @apply leading-7 text-zinc-800 dark:text-zinc-100; }
+.editor-surface h2 { @apply text-xl font-semibold tracking-tight; }
+.editor-surface p { @apply whitespace-pre-wrap; }
+.editor-surface ul { @apply list-disc ml-6; }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
+/* Toolbar buttons (no slash opacities) */
+.toolbar-btn {
+  @apply text-xs rounded-lg px-2 py-1 border bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800;
+  @apply border-zinc-200 dark:border-zinc-700;
+}
+.toolbar-btn.active {
+  @apply bg-black text-white border-black dark:bg-white dark:text-black dark:border-white;
 }
