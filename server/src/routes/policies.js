@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { GenerateBody, UpdateBlocksBody, ExportBody } from '../validators/policies.schema.js';
-import { generatePolicy, getPolicy, updateBlocks, exportPolicy } from '../controllers/policy.controller.js';
+import { generatePolicy, getPolicyById, updateBlocks, exportPolicy } from '../controllers/policy.controller.js';
 
 const r = Router();
 
@@ -18,7 +18,7 @@ const parse =
   };
 
 r.post('/generate', parse(GenerateBody), generatePolicy);
-r.get('/:id', getPolicy);
+r.get('/:id', getPolicyById);
 r.put('/:id/blocks', parse(UpdateBlocksBody), updateBlocks);
 r.post('/:id/export', parse(ExportBody), exportPolicy);
 

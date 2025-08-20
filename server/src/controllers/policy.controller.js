@@ -1,33 +1,36 @@
 import { Policy } from '../models/policy.model.js';
 import { nanoid } from 'nanoid';
-
+import { TopicZ } from '../validators/policies.schema.js';
+import logger from '../lib/logger.js';
+import { generatePolicyBlocks } from '../services/gemini.service.js';
 export async function generatePolicy(req, res, next) {
   try {
-    // Day 1: contract only; real Gemini call will be added on Day 2.
-    // Validate body already via router-level parse.
-    const { topic } = req.body;
+    const { topic } = TopicZ.parse(req.body); // -> 400 on fail (handled by middleware)
+    const blocks = await generatePolicyBlocks(topic); // -> 503 on Gemini parse/down
 
-    // stub empty doc so frontend flow can wire up now (optional)
     const policy = await Policy.create({
       topic,
-      blocks: [
-        { id: nanoid(6), type: 'heading', title: 'Draft', content: '—', order: 1 }
-      ]
+      blocks,
+      meta: { generatedBy: "gemini", createdAt: new Date(), modifiedAt: new Date() }
     });
 
-    res.status(201).json(policy);
+    logger.info({ policyId: policy._id, topic }, "Policy generated and saved");
+    return res.status(201).json(policy);
   } catch (err) {
-    next(err);
+    return next(err);
   }
 }
 
-export async function getPolicy(req, res, next) {
+export async function getPolicyById(req, res, next) {
   try {
-    const policy = await Policy.findById(req.params.id);
-    if (!policy) return res.status(404).json({ error: 'Not found' });
-    res.json(policy);
+    const { id } = req.params;
+    const policy = await Policy.findById(id);
+    if (!policy) {
+      return res.status(404).json({ message: "Policy not found" });
+    }
+    return res.json(policy);
   } catch (err) {
-    next(err);
+    return next(err);
   }
 }
 

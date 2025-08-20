@@ -1,11 +1,11 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
 const BlockSchema = new mongoose.Schema(
   {
-    id: { type: String, required: true }, // nanoid
-    type: { type: String, enum: ['heading', 'paragraph', 'list'], required: true },
+    id: { type: String, required: true },
+    type: { type: String, enum: ["heading", "paragraph", "list"], required: true },
     title: { type: String },
-    content: { type: mongoose.Schema.Types.Mixed, required: true }, // string or string[]
+    content: { type: mongoose.Schema.Types.Mixed, required: true },
     order: { type: Number, required: true }
   },
   { _id: false }
@@ -14,19 +14,25 @@ const BlockSchema = new mongoose.Schema(
 const PolicySchema = new mongoose.Schema(
   {
     topic: { type: String, required: true },
-    blocks: { type: [BlockSchema], default: [] },
+    blocks: { type: [BlockSchema], required: true },
     meta: {
-      generatedBy: { type: String, default: 'gemini' },
+      generatedBy: { type: String, default: "gemini" },
       createdAt: { type: Date, default: Date.now },
       modifiedAt: { type: Date, default: Date.now }
     }
   },
-  { collection: 'policies' }
+  { timestamps: false }
 );
 
-PolicySchema.pre('save', function (next) {
-  this.meta.modifiedAt = new Date();
+// 💡 Always assign order if missing
+PolicySchema.pre("validate", function (next) {
+  if (Array.isArray(this.blocks)) {
+    this.blocks = this.blocks.map((b, i) => ({
+      ...b,
+      order: typeof b.order === "number" ? b.order : i + 1
+    }));
+  }
   next();
 });
 
-export const Policy = mongoose.model('Policy', PolicySchema);
+export const Policy = mongoose.model("Policy", PolicySchema);
