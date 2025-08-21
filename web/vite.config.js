@@ -10,7 +10,7 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
         // If your backend routes are NOT prefixed with /api, uncomment:
-        // rewrite: (path) => path.replace(/^\/api/, ""),
+        rewrite: (path) => path.replace(/^\/api/, ""),
       },
     },
   },

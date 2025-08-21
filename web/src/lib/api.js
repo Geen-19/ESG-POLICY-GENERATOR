@@ -1,4 +1,4 @@
-const API = import.meta.env.VITE_API_BASE || 'http://localhost:4000';
+const API =  'http://localhost:4000';
 
 export async function health() {
   const res = await fetch(`${API}/health`);

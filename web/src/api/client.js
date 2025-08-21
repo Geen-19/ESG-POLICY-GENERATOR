@@ -1,6 +1,6 @@
 import axios from "axios";
 
 export const api = axios.create({
-  baseURL: "/api", // proxy to your server
+  baseURL: "http://localhost:4000/api",
   headers: { "Content-Type": "application/json" },
 });

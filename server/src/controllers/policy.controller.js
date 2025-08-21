@@ -49,7 +49,4 @@ export async function updateBlocks(req, res, next) {
   }
 }
 
-export async function exportPolicy(_req, res, _next) {
-  // Day 1: API shape only. We’ll implement server/client export next.
-  res.status(501).json({ error: 'Export not implemented yet' });
-}
+

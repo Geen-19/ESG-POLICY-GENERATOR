@@ -1,43 +1,47 @@
-import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
-import { generatePolicy, fetchPolicy } from "../api/policies";
+import { generatePolicy, fetchPolicy, saveBlocks } from "../api/policies";
 import PolicyEditor from "../ui/PolicyEditor";
 import { getCounts } from "../lib/blocks";
-
+import PolicyActions from "./PolicyActions";
 export default function GeneratePolicyPage() {
   const qc = useQueryClient();
   const [topic, setTopic] = useState("");
   const [policyId, setPolicyId] = useState(null);
 
+  // pick up ?id=... on reload
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const id = url.searchParams.get("id");
+    if (id) setPolicyId(id);
+  }, []);
+
   const genMut = useMutation({
     mutationFn: () => {
-      if (!topic.trim()) {
-        const err = new Error("Please enter a topic.");
-        err.code = "EMPTY_TOPIC";
-        throw err;
+      const t = topic.trim();
+      if (!t) {
+        const e = new Error("EMPTY_TOPIC");
+        throw e;
       }
-      return generatePolicy(topic.trim());
-    },
-    onMutate: () => {
-      // UI lock handled by isPending
+      return generatePolicy(t);
     },
     onSuccess: (policy) => {
-      // (Optional) purge any previous policy cache to avoid accidental reads elsewhere
-      const oldIds = qc.getQueryCache().findAll({ queryKey: ["policy"] }).map(q => q.queryKey[1]).filter(Boolean);
-      oldIds.forEach(id => { if (id !== policy._id) qc.removeQueries({ queryKey: ["policy", id] }); });
-
+      // clear other cache entries to avoid stale reads
+      qc.removeQueries({ queryKey: ["policy"], exact: false });
       qc.setQueryData(["policy", policy._id], policy);
       setPolicyId(policy._id);
+
+      // push id to URL so reload works
+      const url = new URL(window.location.href);
+      url.searchParams.set("id", policy._id);
+      window.history.replaceState({}, "", url.toString());
+
       toast.success("Policy generated!");
     },
-
     onError: (err) => {
-      if (err.code === "EMPTY_TOPIC") {
-        toast.error("Topic can't be empty.");
-        return;
-      }
-      toast.error(err?.response?.data?.message || "Network error while generating.");
+      if (err?.message === "EMPTY_TOPIC") toast.error("Topic can't be empty.");
+      else toast.error(err?.response?.data?.message || "Network error while generating.");
     },
   });
 
@@ -45,17 +49,43 @@ export default function GeneratePolicyPage() {
     enabled: !!policyId,
     queryKey: ["policy", policyId],
     queryFn: () => fetchPolicy(policyId),
-    staleTime: Infinity,
+    staleTime: 0,
   });
 
   const counts = useMemo(() => (policy ? getCounts(policy.blocks || []) : { words: 0, chars: 0 }), [policy]);
 
+  // Save
+  const saveMut = useMutation({
+    mutationFn: async () => {
+      const p = qc.getQueryData(["policy", policyId]);
+      if (!p) return;
+      await saveBlocks(policyId, p.blocks || []);
+      toast.success("Saved");
+      // refetch to confirm persisted order/content
+      await qc.invalidateQueries({ queryKey: ["policy", policyId] });
+    },
+    onError: (e) => toast.error(e?.response?.data?.message || "Save failed"),
+  });
+
   return (
-    // inside return()
-    <>
+    <div className="min-h-screen flex flex-col">
       <header className="px-6 py-4 sticky top-0 z-10 bg-gradient-to-b from-white/90 to-white/60 dark:from-zinc-900/90 dark:to-zinc-900/60 backdrop-blur border-b">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
+        <div className="max-w-6xl mx-auto flex items-center justify-between gap-3">
           <h1 className="text-lg md:text-xl font-semibold">ESG Policy Generator</h1>
+          {policy && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-zinc-600 dark:text-zinc-400">
+                {counts.words} words · {counts.chars} chars
+              </span>
+              <button
+                className="btn-primary"
+                onClick={() => saveMut.mutate()}
+                disabled={saveMut.isPending}
+              >
+                {saveMut.isPending ? "Saving…" : "Save"}
+              </button>
+            </div>
+          )}
         </div>
       </header>
 
@@ -78,18 +108,15 @@ export default function GeneratePolicyPage() {
 
           {policy && (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Editor */}
               <div className="card overflow-hidden">
                 <div className="px-4 py-3 border-b bg-gradient-to-r from-zinc-50 to-white dark:from-zinc-900 dark:to-zinc-900/70 flex items-center justify-between">
                   <div className="font-medium truncate">{policy.topic}</div>
-                  <div className="text-sm text-zinc-600 dark:text-zinc-400">
-                    {counts.words} words · {counts.chars} chars
-                  </div>
                 </div>
                 <PolicyEditor policyId={policy._id} />
+                <PolicyActions policy={policy} />
+
               </div>
 
-              {/* Preview */}
               <div className="card overflow-hidden">
                 <div className="px-4 py-3 border-b bg-gradient-to-r from-zinc-50 to-white dark:from-zinc-900 dark:to-zinc-900/70 font-medium">
                   Preview
@@ -100,34 +127,23 @@ export default function GeneratePolicyPage() {
           )}
         </div>
       </main>
-    </>
+    </div>
   );
 }
 
-
-/* Inline preview pulling from cache for "live" feel */
+import { useQueryClient as useQC } from "@tanstack/react-query";
 function PreviewPane({ policyId }) {
-  const qc = useQueryClient();
-  // Read directly from cache so edits show instantly
+  const qc = useQC();
   const policy = qc.getQueryData(["policy", policyId]);
   if (!policy) return null;
-
   const blocks = [...(policy.blocks || [])].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-
   return (
-    <div className="p-4 prose max-w-none">
+    <div className="p-5 prose prose-zinc dark:prose-invert max-w-none">
       {blocks.map((b) => {
-        if (b.type === "heading") {
-          const text = b.title || b.content || "";
-          return <h2 key={b.id} className="text-lg font-semibold mt-4">{text}</h2>;
-        }
+        if (b.type === "heading") return <h2 key={b.id} className="mt-4">{b.title || b.content || ""}</h2>;
         if (b.type === "list") {
           const items = Array.isArray(b.content) ? b.content : String(b.content || "").split("\n");
-          return (
-            <ul key={b.id} className="list-disc ml-6 mt-2">
-              {items.filter(Boolean).map((t, i) => <li key={i}>{t}</li>)}
-            </ul>
-          );
+          return <ul key={b.id} className="mt-2">{items.filter(Boolean).map((t, i) => <li key={i}>{t}</li>)}</ul>;
         }
         return <p key={b.id} className="mt-3 whitespace-pre-wrap">{String(b.content || "")}</p>;
       })}

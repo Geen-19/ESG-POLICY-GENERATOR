@@ -7,6 +7,7 @@ import Italic from "@tiptap/extension-italic";
 import BulletList from "@tiptap/extension-bullet-list";
 import ListItem from "@tiptap/extension-list-item";
 import cx from "classnames";
+import PlaceHolder from "@tiptap/extension-placeholder";
 
 export default function BlockEditor({ block, onChange }) {
   const isHeading = block.type === "heading";
