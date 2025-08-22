@@ -6,7 +6,7 @@ import logger from "./lib/logger.js";
 import policyRoutes from "./routes/policies.js";
 import errorHandler from "./middleware/error.js";
 import healthRoutes from "./routes/health.js"
-import exportRoutes from "./routes/export.js"; // Import export routes
+//import exportRoutes from "./routes/export.js"; // Import export routes
 const app = express();
 app.use(cors());
 app.use(express.json());
@@ -16,7 +16,6 @@ app.use((req, _res, next) => {
   next();
 }
 );
-app.use("/api", exportRoutes); // Mount export routes at /api
 app.use("/health", healthRoutes)
 app.use("/api/policies", policyRoutes);
 app.use((req, res) => res.status(404).json({ error: 'Not Found', path: req.originalUrl }));

@@ -7,7 +7,6 @@ export async function generatePolicy(req, res, next) {
   try {
     const { topic } = TopicZ.parse(req.body); // -> 400 on fail (handled by middleware)
     const blocks = await generatePolicyBlocks(topic); // -> 503 on Gemini parse/down
-
     const policy = await Policy.create({
       topic,
       blocks,
