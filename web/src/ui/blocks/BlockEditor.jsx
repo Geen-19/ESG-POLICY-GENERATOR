@@ -113,8 +113,15 @@ function toListHtml(text) {
   return `<ul>${items.map(t => `<li>${t}</li>`).join("")}</ul>`;
 }
 function fromListHtml(html) {
-  const matches = [...html.matchAll(/<li>([\s\S]*?)<\/li>/g)];
-  return matches.map(m => unescapeHtml(m[1] || "").replace(/<br\s*\/?>/g, "\n"));
+  const matches = [...html.matchAll(/<li[^>]*>([\s\S]*?)<\/li>/g)];
+    return matches.map(m => {
+    const inner = m[1] || "";
+    // normalize <br> first, then strip <p> and any residual tags
+    const withBreaks = inner.replace(/<br\s*\/?>/g, "\n");
+    const noPTags = withBreaks.replace(/<\/?p[^>]*>/g, "");
+    const plain = noPTags.replace(/<\/?[^>]+>/g, "");
+    return unescapeHtml(plain).trim();
+  }).filter(Boolean);
 }
 function escapeHtml(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
 function unescapeHtml(s){return String(s).replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&amp;/g,"&");}

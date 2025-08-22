@@ -201,7 +201,7 @@ function ClonePreview({ block }) {
   );
 }
 
-/** Presentational wrapper with toolbar + drag handle */
+/**  toolbar + drag handle */
 function BlockShell({ children, dragHandleProps, block, onAdd, onDelete, onTypeChange, onMoveUp, onMoveDown }) {
   const TypeIcon = TYPES.find(t => t.value === block.type)?.icon ?? Pilcrow;
   return (

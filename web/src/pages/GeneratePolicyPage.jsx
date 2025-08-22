@@ -57,7 +57,6 @@ export default function GeneratePolicyPage() {
 
   const counts = useMemo(() => (policy ? getCounts(policy.blocks || []) : { words: 0, chars: 0 }), [policy]);
 
-  // Save
   const saveMut = useMutation({
     mutationFn: async () => {
       const p = qc.getQueryData(["policy", policyId]);
