@@ -24,7 +24,7 @@ export default function GeneratePolicyPage() {
         const e = new Error("EMPTY_TOPIC");
         throw e;
       }
-      return generatePolicy(t);
+      return generatePolicy({topic : t});
     },
     onSuccess: (policy) => {
       // clear other cache entries to avoid stale reads
@@ -40,7 +40,10 @@ export default function GeneratePolicyPage() {
       toast.success("Policy generated!");
     },
     onError: (err) => {
+      console.log(err);
+
       if (err?.message === "EMPTY_TOPIC") toast.error("Topic can't be empty.");
+      
       else toast.error(err?.response?.data?.message || "Network error while generating.");
     },
   });
@@ -58,8 +61,12 @@ export default function GeneratePolicyPage() {
   const saveMut = useMutation({
     mutationFn: async () => {
       const p = qc.getQueryData(["policy", policyId]);
+      console.log(p);
+      
       if (!p) return;
-      await saveBlocks(policyId, p.blocks || []);
+      const res = await saveBlocks(policyId, p.blocks || []);
+      console.log(res);
+      
       toast.success("Saved");
       // refetch to confirm persisted order/content
       await qc.invalidateQueries({ queryKey: ["policy", policyId] });

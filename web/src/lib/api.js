@@ -7,6 +7,8 @@ export async function health() {
 }
 
 export async function generatePolicy(topic) {
+  console.log(topic);
+  
   const res = await fetch(`${API}/api/policies/generate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

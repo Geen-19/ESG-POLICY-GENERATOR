@@ -3,12 +3,13 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { GenerateBody, UpdateBlocksBody, ExportBody } from '../validators/policies.schema.js';
 import { updateBlocks } from '../controllers/policy.controller.js';
-import { generatePolicy } from '../../../web/src/lib/api.js';
+import { generatePolicy } from '../controllers/policy.controller.js';
 import { getPolicyById } from '../controllers/policy.controller.js';
 import { exportPolicy } from '../controllers/exportController.js'; // Adjust import path if needed
 const r = Router();
 
 const parse = (schema) => (req, _res, next) => {
+
   try {
     req.body = schema.parse(req.body);
     next();

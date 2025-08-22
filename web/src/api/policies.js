@@ -1,8 +1,21 @@
 import { api } from "./client";
-
-export async function generatePolicy(topic) {
-  const { data } = await api.post("/policies/generate", { topic });
-  return data; // { _id, topic, blocks: [...] }
+import axios from "axios";
+const API = import.meta.env.VITE_API_BASE || 'http://localhost:4000';
+export async function generatePolicy(payload) {
+  console.log(payload);
+  
+  try {
+    const { data } = await axios.post(`${API}/api/policies/generate`, payload, {
+      headers: { 'Content-Type': 'application/json' },
+    });
+    return data;
+  } catch (e) {
+    console.error('generatePolicy failed:',
+      e.response?.status,
+      e.response?.data?.error || e.message
+    );
+    throw e;
+  }
 }
 
 export async function fetchPolicy(id) {
@@ -22,6 +35,6 @@ export async function saveBlocks(id, blocks) {
         ? (Array.isArray(b.content) ? b.content : String(b.content ?? "").split(/\r?\n/).filter(Boolean))
         : (b.title && b.type === "heading" ? b.title : String(b.content ?? "")),
     }));
-  const { data } = await api.put(`/api/policies/${id}/blocks`, { blocks: normalized });
+  const { data } = await api.put(`/policies/${id}/blocks`, { blocks: normalized });
   return data; // expect { _id, blocks: [...] } or { ok: true }
 }
