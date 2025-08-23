@@ -3,6 +3,7 @@ import { Policy } from '../models/policy.model.js';
 import puppeteer from 'puppeteer-core';
 import chromium from '@sparticuz/chromium';
 import  { Document, Packer, Paragraph, HeadingLevel, TextRun, Numbering, AlignmentType } from "docx";
+import { launchBrowser } from "../lib/launchBrowser.js";
 
 function renderBlocksToHtml(blocks) {
   // Simple, consistent HTML from the canonical blocks
@@ -104,13 +105,10 @@ function policyHtmlTemplate({ topic, bodyHtml }) {
 //     await browser.close();
 //   }
 // }
+// server/controllers/exportController.js
+
 async function exportPdfFromHtml(html) {
-  const browser = await puppeteer.launch({
-    args: chromium.args,
-    defaultViewport: chromium.defaultViewport,
-    executablePath: await chromium.executablePath(),
-    headless: chromium.headless,
-  });
+  const browser = await launchBrowser();
   try {
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: ["domcontentloaded", "networkidle0"] });
@@ -124,15 +122,15 @@ async function exportPdfFromHtml(html) {
       footerTemplate: `
         <div style="font-size:10px;color:#666;width:100%;
                     padding:0 12px;display:flex;justify-content:flex-end;align-items:center;">
-          <span style="font-weight:700;letter-spacing:.4px;">${escapeHtml(companyName)}</span>
+          <span style="font-weight:700;letter-spacing:.4px;">KuKi Pvt Ltd</span>
         </div>`
     });
-
     return pdf;
   } finally {
     await browser.close();
   }
 }
+
 
 
 function renderBlocksToDocxChildren(blocks) {
