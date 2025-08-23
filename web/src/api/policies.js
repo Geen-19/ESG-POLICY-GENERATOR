@@ -1,6 +1,6 @@
 import { api } from "./client";
 import axios, { Axios } from "axios";
-const API = import.meta.env.VITE_API || '';
+const API = import.meta.env.VITE_API_BASE || '';
 export async function generatePolicy(payload) {
   
   try {
