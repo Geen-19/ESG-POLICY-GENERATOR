@@ -60,12 +60,8 @@ export default function GeneratePolicyPage() {
   const saveMut = useMutation({
     mutationFn: async () => {
       const p = qc.getQueryData(["policy", policyId]);
-      console.log(p);
-      
       if (!p) return;
       const res = await saveBlocks(policyId, p.blocks || []);
-      console.log(res);
-      
       toast.success("Saved");
       // refetch to confirm persisted order/content
       await qc.invalidateQueries({ queryKey: ["policy", policyId] });

@@ -31,56 +31,79 @@ function escapeHtml(s='') {
 }
 
 function policyHtmlTemplate({ topic, bodyHtml }) {
-  // Add header/footer styling as needed for brand consistency
   return `
 <!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8" />
-<title>${escapeHtml(topic)} — ESG Policy</title>
+<title>${escapeHtml(topic)}</title>
 <style>
-  @page { margin: 72px 60px 72px 60px; }
-  body { font-family: Arial, Helvetica, sans-serif; color: #111; line-height: 1.45; font-size: 12pt; }
-  header { position: fixed; top: -48px; left: 0; right: 0; height: 40px; font-size: 11pt; color: #666; }
-  footer { position: fixed; bottom: -48px; left: 0; right: 0; height: 40px; font-size: 10pt; color: #666; }
-  .brand { font-weight: 700; letter-spacing: .4px; }
+  @page { margin: 84px 60px 84px 60px; }
+
+  body {
+    font-family: Arial, Helvetica, sans-serif;
+    color: #111; line-height: 1.45; font-size: 12pt;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Header/footer live in the page margin, won't overlap content */
+  header, footer {
+    position: fixed;
+    left: 60px; right: 60px;
+    height: 24px;
+    color: #666;
+  }
+  header { top: 24px; }
+  footer { bottom: 24px; text-align: right; } /* ⟵ bottom-right */
+
   h1 { font-size: 22pt; margin: 0 0 12px; }
   h2 { font-size: 14pt; margin: 18px 0 6px; }
   p  { margin: 8px 0; }
   ul { margin: 6px 0 6px 20px; }
-  .container { page-break-inside: avoid; }
-  .page-number:after { content: counter(page); }
+  .brand { font-weight: 700; letter-spacing: .4px; }
 </style>
 </head>
 <body>
-  <header><span class="brand">Company Name</span> • ESG Policy</header>
-  <footer>Page <span class="page-number"></span></footer>
+  <header></header>
 
   <main>
-    <div class="container">
-      <h1>${escapeHtml(topic)}</h1>
-      ${bodyHtml}
-    </div>
+    <h1>${escapeHtml(topic)}</h1>
+    ${bodyHtml}
   </main>
 </body>
 </html>`;
 }
 
-async function exportPdfFromHtml(html) {
-  // Headless Chromium
-  const browser = await puppeteer.launch({
-    // If running in certain Linux/CI environments, add:
-    // args: ['--no-sandbox', '--disable-setuid-sandbox']
-  });
+
+
+// exportPdfFromHtml
+async function exportPdfFromHtml(html, companyName = "KuKi Pvt Ltd") {
+  const browser = await puppeteer.launch();
   try {
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: ['domcontentloaded', 'networkidle0'] });
-    const pdf = await page.pdf({ format: 'A4', printBackground: true });
-    return pdf; // Buffer
+
+    const pdf = await page.pdf({
+      format: 'A4',
+      printBackground: true,
+      displayHeaderFooter: true,
+      margin: { top: '84px', bottom: '84px', left: '60px', right: '60px' },
+      headerTemplate: `<div></div>`,
+      // Inline styles only; external CSS is ignored in header/footer
+      footerTemplate: `
+        <div style="font-size:10px;color:#666;width:100%;
+                    padding:0 12px;display:flex;justify-content:flex-end;align-items:center;">
+          <span style="font-weight:700;letter-spacing:.4px;">${escapeHtml(companyName)}</span>
+        </div>`
+    });
+
+    return pdf;
   } finally {
     await browser.close();
   }
 }
+
 
 function renderBlocksToDocxChildren(blocks) {
   // Build docx children honoring headings/lists/paragraphs

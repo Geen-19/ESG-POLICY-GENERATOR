@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const GenerateBody = z.object({
-  topic: z.string().min(3)
+  topic: z.string().min(3, "Topic must be at least 2 characters")
 });
 
 
@@ -30,5 +30,6 @@ export const BlockZ = z.object({
 export const BlocksArrayZ = z.array(BlockZ);
 
 export const TopicZ = z.object({
+  
   topic: z.string().min(2, "Topic must be at least 2 characters")
 });

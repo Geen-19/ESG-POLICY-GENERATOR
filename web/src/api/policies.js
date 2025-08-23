@@ -2,7 +2,6 @@ import { api } from "./client";
 import axios from "axios";
 const API = import.meta.env.VITE_API_BASE || 'http://localhost:4000';
 export async function generatePolicy(payload) {
-  console.log(payload);
   
   try {
     const { data } = await axios.post(`${API}/api/policies/generate`, payload, {
