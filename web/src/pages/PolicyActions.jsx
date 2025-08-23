@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import toast, { Toaster } from 'react-hot-toast';
 import { copyPolicyToClipboard } from '../lib/policyClipboard';
-
+const API_BASE = import.meta.env.VITE_API_BASE || '';
 export default function PolicyActions({ policy }) {
   const [isCopying, setIsCopying] = useState(false);
   const [downloading, setDownloading] = useState(null); 
@@ -26,7 +26,7 @@ export default function PolicyActions({ policy }) {
     try {
       setDownloading(format);
       // prefer GET with query for ease
-      const url = `http://localhost:4000/api/policies/${policy._id}/export?format=${format}`;
+      const url = `${API_BASE}/api/policies/${policy._id}/export?format=${format}`;
       const resp = await fetch(url, { method: 'GET' });
       if (!resp.ok) {
             console.log(resp);
