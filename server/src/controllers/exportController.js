@@ -1,7 +1,5 @@
 // controllers/exportController.js
 import { Policy } from '../models/policy.model.js';
-import puppeteer from 'puppeteer-core';
-import chromium from '@sparticuz/chromium';
 import  { Document, Packer, Paragraph, HeadingLevel, TextRun, Numbering, AlignmentType } from "docx";
 import { launchBrowser } from "../lib/launchBrowser.js";
 
