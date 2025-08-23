@@ -1,6 +1,6 @@
 // controllers/exportController.js
 import { Policy } from '../models/policy.model.js';
-import  { Document, Packer, Paragraph, HeadingLevel, TextRun, Numbering, AlignmentType } from "docx";
+import { Document, Packer, Paragraph, HeadingLevel, TextRun, Numbering, AlignmentType } from "docx";
 import { launchBrowser } from "../lib/launchBrowser.js";
 
 function renderBlocksToHtml(blocks) {
@@ -21,7 +21,7 @@ function renderBlocksToHtml(blocks) {
   return parts.join('\n');
 }
 
-function escapeHtml(s='') {
+function escapeHtml(s = '') {
   return s
     .replaceAll('&', '&amp;')
     .replaceAll('<', '&lt;')
@@ -110,24 +110,27 @@ async function exportPdfFromHtml(html) {
   try {
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: ["domcontentloaded", "networkidle0"] });
+
     const pdf = await page.pdf({
-      format: 'A4',
+      format: "A4",
       printBackground: true,
       displayHeaderFooter: true,
-      margin: { top: '84px', bottom: '84px', left: '60px', right: '60px' },
-      headerTemplate: `<div></div>`,
-      // Inline styles only; external CSS is ignored in header/footer
+      margin: { top: "84px", bottom: "84px", left: "60px", right: "60px" },
+      headerTemplate: "<div></div>",
       footerTemplate: `
         <div style="font-size:10px;color:#666;width:100%;
                     padding:0 12px;display:flex;justify-content:flex-end;align-items:center;">
           <span style="font-weight:700;letter-spacing:.4px;">KuKi Pvt Ltd</span>
         </div>`
     });
-    return pdf;
+
+    // ⬇️ Ensure Node Buffer (Uint8Array on Vercel)
+    return Buffer.isBuffer(pdf) ? pdf : Buffer.from(pdf);
   } finally {
     await browser.close();
   }
 }
+
 
 
 
@@ -169,14 +172,21 @@ export const exportPolicy = async (req, res) => {
     const topic = policy.topic || 'ESG Policy';
     const blocks = [...(policy.blocks || [])].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 
-    if (format === 'pdf') {
+    if (format === "pdf") {
       const html = policyHtmlTemplate({ topic, bodyHtml: renderBlocksToHtml(blocks) });
       const pdfBuffer = await exportPdfFromHtml(html);
 
-      res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `attachment; filename="${sanitizeFilename(topic)}.pdf"`);
-      return res.send(pdfBuffer);
+      // Optional sanity check while debugging:
+      // console.log('PDF header:', pdfBuffer.slice(0,5).toString()); // should be "%PDF-"
+
+      res.statusCode = 200;
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `attachment; filename="${sanitizeFilename(topic)}.pdf"`);
+      res.setHeader("Content-Length", String(pdfBuffer.length));
+      res.setHeader("X-Content-Type-Options", "nosniff");
+      return res.end(pdfBuffer);  // ⬅️ use end(), not send()
     }
+
 
     // DOCX
     const doc = new Document({
