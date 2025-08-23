@@ -8,6 +8,7 @@
     "web"
   ],
   "scripts": {
+    "build": "npm -w web run build",
     "dev": "npm-run-all -p dev:*",
     "dev:server": "npm --workspace server run dev",
     "dev:web": "npm --workspace web run dev",
