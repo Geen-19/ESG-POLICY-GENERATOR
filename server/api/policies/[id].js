@@ -1,9 +1,13 @@
-import { dbConnect } from "../../server/src/lib/db.js";
+import { dbConnect } from "../../src/lib/db.js";
 
-import { getPolicyById } from "../../server/src/controllers/policy.controller.js";
+import { getPolicyById } from "../../src/controllers/policy.controller.js";
+import { withCors } from "../_cors.js";
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== "GET") return res.status(405).end();
   await dbConnect();
-  return getPolicy(req, res);
+  return getPolicyById(req, res);
 }
+
+
+export default withCors(handler);

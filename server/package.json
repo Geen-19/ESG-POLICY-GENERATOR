@@ -4,6 +4,7 @@
   "type": "module",
   "main": "src/index.js",
   "scripts": {
+    "build": "echo \"no build step\"",
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "nodemon src/index.js",
     "start": "node src/index.js",
@@ -23,11 +24,11 @@
     "mongoose": "^8.17.2",
     "nanoid": "^5.1.5",
     "pino": "^9.9.0",
-    "puppeteer": "^24.17.0",
     "puppeteer-core": "^24.17.0",
     "zod": "^4.0.17"
   },
   "devDependencies": {
+    "puppeteer": "^24.17.0",
     "eslint": "^9.33.0",
     "nodemon": "^3.1.10"
   }
