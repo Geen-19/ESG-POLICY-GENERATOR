@@ -1,6 +1,6 @@
 // server/api/_cors.js
 export function withCors(handler) {
-  const origin = process.env.FRONTEND_ORIGIN || "*";
+  const origin = process.env.VITE_API_BASE || "*";
   return async (req, res) => {
     res.setHeader("Access-Control-Allow-Origin", origin);
     res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,OPTIONS");
