@@ -2,6 +2,7 @@
   "name": "esg-policy-gen",
   "private": true,
   "version": "0.1.0",
+  "type": "module",
   "workspaces": [
     "server",
     "web"
@@ -23,6 +24,10 @@
     "prettier": "^3.3.3"
   },
   "dependencies": {
-    "lucide-react": "^0.540.0"
+    "@sparticuz/chromium": "^138.0.2",
+    "docx": "^9.5.1",
+    "lucide-react": "^0.540.0",
+    "mongoose": "^8.18.0",
+    "puppeteer-core": "^24.17.0"
   }
 }

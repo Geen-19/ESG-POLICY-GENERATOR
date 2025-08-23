@@ -1,6 +1,7 @@
 // controllers/exportController.js
 import { Policy } from '../models/policy.model.js';
-import puppeteer from 'puppeteer';
+import puppeteer from 'puppeteer-core';
+import chromium from '@sparticuz/chromium';
 import  { Document, Packer, Paragraph, HeadingLevel, TextRun, Numbering, AlignmentType } from "docx";
 
 function renderBlocksToHtml(blocks) {
@@ -78,12 +79,41 @@ function policyHtmlTemplate({ topic, bodyHtml }) {
 
 
 // exportPdfFromHtml
-async function exportPdfFromHtml(html, companyName = "KuKi Pvt Ltd") {
-  const browser = await puppeteer.launch();
+// async function exportPdfFromHtml(html, companyName = "KuKi Pvt Ltd") {
+//   const browser = await puppeteer.launch();
+//   try {
+//     const page = await browser.newPage();
+//     await page.setContent(html, { waitUntil: ['domcontentloaded', 'networkidle0'] });
+
+//     const pdf = await page.pdf({
+//       format: 'A4',
+//       printBackground: true,
+//       displayHeaderFooter: true,
+//       margin: { top: '84px', bottom: '84px', left: '60px', right: '60px' },
+//       headerTemplate: `<div></div>`,
+//       // Inline styles only; external CSS is ignored in header/footer
+//       footerTemplate: `
+//         <div style="font-size:10px;color:#666;width:100%;
+//                     padding:0 12px;display:flex;justify-content:flex-end;align-items:center;">
+//           <span style="font-weight:700;letter-spacing:.4px;">${escapeHtml(companyName)}</span>
+//         </div>`
+//     });
+
+//     return pdf;
+//   } finally {
+//     await browser.close();
+//   }
+// }
+async function exportPdfFromHtml(html) {
+  const browser = await puppeteer.launch({
+    args: chromium.args,
+    defaultViewport: chromium.defaultViewport,
+    executablePath: await chromium.executablePath(),
+    headless: chromium.headless,
+  });
   try {
     const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: ['domcontentloaded', 'networkidle0'] });
-
+    await page.setContent(html, { waitUntil: ["domcontentloaded", "networkidle0"] });
     const pdf = await page.pdf({
       format: 'A4',
       printBackground: true,

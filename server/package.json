@@ -23,7 +23,6 @@
     "mongoose": "^8.17.2",
     "nanoid": "^5.1.5",
     "pino": "^9.9.0",
-    "puppeteer": "^24.17.0",
     "zod": "^4.0.17"
   },
   "devDependencies": {

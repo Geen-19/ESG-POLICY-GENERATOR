@@ -1,6 +1,6 @@
 import { api } from "./client";
-import axios from "axios";
-const API = import.meta.env.VITE_API_BASE || 'http://localhost:4000';
+import axios, { Axios } from "axios";
+const API = import.meta.env.VITE_API || '';
 export async function generatePolicy(payload) {
   
   try {
@@ -18,7 +18,7 @@ export async function generatePolicy(payload) {
 }
 
 export async function fetchPolicy(id) {
-  const { data } = await api.get(`/policies/${id}`);
+  const { data } = await axios.get(`${API}/api/policies/${id}`);
   return data;
 }
 
@@ -34,6 +34,6 @@ export async function saveBlocks(id, blocks) {
         ? (Array.isArray(b.content) ? b.content : String(b.content ?? "").split(/\r?\n/).filter(Boolean))
         : (b.title && b.type === "heading" ? b.title : String(b.content ?? "")),
     }));
-  const { data } = await api.put(`/policies/${id}/blocks`, { blocks: normalized });
+  const { data } = await axios.put(`${API}/api/policies/${id}/blocks`, { blocks: normalized });
   return data; // expect { _id, blocks: [...] } or { ok: true }
 }
