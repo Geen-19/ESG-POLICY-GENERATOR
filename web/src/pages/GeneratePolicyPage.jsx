@@ -155,16 +155,15 @@ import { useQueryClient as useQC } from "@tanstack/react-query";
 }
 function allowInlineMarks(html = "") {
   let s = String(html);
-  // normalize <b>/<i> to <strong>/<em>
   s = s.replace(/<\s*b(\s|>)/gi, "<strong$1").replace(/<\/\s*b\s*>/gi, "</strong>");
   s = s.replace(/<\s*i(\s|>)/gi, "<em$1").replace(/<\/\s*i\s*>/gi, "</em>");
-  // strip scripts and inline event handlers
   s = s.replace(/<script[\s\S]*?<\/script>/gi, "");
   s = s.replace(/\son\w+="[^"]*"/gi, "");
-  // allow only: p, h2, br, strong, em, ul, ol, li
-  s = s.replace(/<(?!\/?(p|h2|br|strong|em|ul|ol|li)\b)[^>]*>/gi, "");
+  // allow only: p, br, strong, em, ul, ol, li  (🚫 no h2)
+  s = s.replace(/<(?!\/?(p|br|strong|em|ul|ol|li)\b)[^>]*>/gi, "");
   return s;
 }
+
 function ensureBlockTag(html, tag) {
   const t = tag.toLowerCase(), h = String(html).trim();
   return new RegExp(`^<${t}\\b[\\s\\S]*</${t}>$`, "i").test(h) ? h : `<${t}>${h}</${t}>`;

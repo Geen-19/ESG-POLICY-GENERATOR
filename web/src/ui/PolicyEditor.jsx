@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { Plus, Trash2, GripVertical, Type, List as ListIcon, Pilcrow, ArrowUp, ArrowDown } from "lucide-react";
 import BlockEditor from "./blocks/BlockEditor";
-import React, {memo} from "react";
+import React, { memo } from "react";
 import { cid } from "../lib/id";
 import cx from "classnames";
 
@@ -61,22 +61,49 @@ export default function PolicyEditor({ policyId }) {
     setBlocks(next);
   };
   const deleteBlock = (id) => setBlocks(blocks.filter((b) => b.id !== id));
+  function stripHeadingTags(html = "") {
+    return String(html).replace(/<\/?h[1-6][^>]*>/gi, "");
+  }
+
+  function toPlainFromBlock(b) {
+    // Prefer plain title (you already keep this up-to-date for headings)
+    if (typeof b?.title === "string" && b.title.trim()) return b.title.trim();
+
+    // Fallback: remove heading tags + block wrappers, normalize <br> to newline
+    const raw = stripHeadingTags(String(b?.content ?? ""));
+    return raw
+      .replace(/<\/?p[^>]*>/gi, "")
+      .replace(/<br\s*\/?>/gi, "\n")
+      .replace(/<[^>]+>/g, "")       // nuke any stray tags
+      .trim();
+  }
+
   const changeType = (id, nextType) => {
     const next = blocks.map((b) => {
       if (b.id !== id) return b;
+
       if (nextType === "list") {
-        const items = Array.isArray(b.content) ? b.content : String(b.content ?? "").split(/\r?\n/).filter(Boolean);
+        const base = toPlainFromBlock(b);
+        const items = Array.isArray(b.content)
+          ? b.content
+          : base.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
         return { ...b, type: "list", title: undefined, content: items };
       }
+
       if (nextType === "heading") {
-        const text = Array.isArray(b.content) ? b.content.join(" · ") : String(b.content ?? "");
-        return { ...b, type: "heading", title: text || b.title || "", content: text || b.title || "" };
+        const text = toPlainFromBlock(b);
+        // keep both title (plain) and content (TipTap will wrap to <h2>)
+        return { ...b, type: "heading", title: text, content: text };
       }
-      const text = Array.isArray(b.content) ? b.content.join("\n") : String(b.content ?? "");
+
+      // paragraph
+      const text = toPlainFromBlock(b);
       return { ...b, type: "paragraph", title: undefined, content: text };
     });
+
     setBlocks(next);
   };
+
   const moveBy = (id, delta) => {
     const idx = blocks.findIndex((b) => b.id === id);
     if (idx < 0) return;
@@ -158,7 +185,7 @@ export default function PolicyEditor({ policyId }) {
                       style={getItemStyle(drag.draggableProps.style, snapshot)}
                     >
                       <BlockShell
-                        
+
                         dragHandleProps={{ ...drag.dragHandleProps, className: "toolbar-btn dnd-handle" }}
                         index={i}
                         block={b}
