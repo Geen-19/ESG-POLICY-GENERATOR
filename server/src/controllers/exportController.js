@@ -4,21 +4,42 @@ import { Document, Packer, Paragraph, HeadingLevel, TextRun, Numbering, Alignmen
 import { launchBrowser } from "../lib/launchBrowser.js";
 
 function renderBlocksToHtml(blocks) {
-  // Simple, consistent HTML from the canonical blocks
   const parts = blocks.map(b => {
     if (b.type === 'heading') {
-      const t = b.title || b.content;
-      return `<h2>${escapeHtml(t)}</h2>`;
+      const inline = extractInlineOnly(String(b.content ?? b.title ?? ""));
+      return `<h2>${inline || ""}</h2>`;
     }
     if (b.type === 'list') {
-      const items = Array.isArray(b.content) ? b.content : String(b.content || '').split('\n').filter(Boolean);
-      return `<ul>${items.map(li => `<li>${escapeHtml(li)}</li>`).join('')}</ul>`;
+      const items = Array.isArray(b.content)
+        ? b.content
+        : String(b.content || '').split('\n').filter(Boolean);
+      return `<ul>${items.map(li => `<li>${allowInlineMarks(li)}</li>`).join('')}</ul>`;
     }
-    // paragraph (fallback)
-    return `<p>${escapeHtml(String(b.content ?? ''))}</p>`;
+    const html = allowInlineMarks(String(b.content ?? ''));
+    return ensureBlockTag(html, "p");
   });
+  return parts.join("\n");
+}
+function extractInlineOnly(html = "") {
+  // sanitize + drop block wrappers, keep <strong>/<em>/<br>
+  let s = allowInlineMarks(html);
+  s = s.replace(/<\/?(p|h[1-6]|ul|ol|li)[^>]*>/gi, "");
+  return s.trim();
+}
 
-  return parts.join('\n');
+function allowInlineMarks(html = "") {
+  let s = String(html);
+  s = s.replace(/<\s*b(\s|>)/gi, "<strong$1").replace(/<\/\s*b\s*>/gi, "</strong>");
+  s = s.replace(/<\s*i(\s|>)/gi, "<em$1").replace(/<\/\s*i\s*>/gi, "</em>");
+  s = s.replace(/<script[\s\S]*?<\/script>/gi, "");
+  s = s.replace(/\son\w+="[^"]*"/gi, "");
+  // allow only p, h2, br, strong, em, ul, li
+  s = s.replace(/<(?!\/?(p|h2|br|strong|em|ul|li)\b)[^>]*>/gi, "");
+  return s;
+}
+function ensureBlockTag(html, tag) {
+  const t = tag.toLowerCase(), h = String(html).trim();
+  return new RegExp(`^<${t}\\b[\\s\\S]*</${t}>$`, "i").test(h) ? h : `<${t}>${h}</${t}>`;
 }
 
 function escapeHtml(s = '') {
@@ -136,26 +157,66 @@ async function exportPdfFromHtml(html) {
 
 function renderBlocksToDocxChildren(blocks) {
   // Build docx children honoring headings/lists/paragraphs
-  const children = [];
-  blocks.forEach(b => {
-    if (b.type === 'heading') {
-      const t = (b.title || b.content || '').toString();
-      children.push(new Paragraph({ text: t, heading: HeadingLevel.HEADING_2, spacing: { after: 140 } }));
-    } else if (b.type === 'list') {
-      const items = Array.isArray(b.content) ? b.content : String(b.content || '').split('\n').filter(Boolean);
-      items.forEach((li) => {
-        children.push(new Paragraph({
-          text: li,
+  const out = [];
+  for (const b of blocks) {
+    if (b.type === "heading") {
+      const runs = htmlToRuns(b.content ?? b.title ?? "");
+      out.push(new Paragraph({
+        children: runs,
+        heading: HeadingLevel.HEADING_2,
+        spacing: { after: 140 }
+      }));
+      continue;
+    }
+    if (b.type === "list") {
+      const items = Array.isArray(b.content)
+        ? b.content
+        : String(b.content || "").split("\n").map(s => s.trim()).filter(Boolean);
+      for (const li of items) {
+        out.push(new Paragraph({
+          children: htmlToRuns(li),
           bullet: { level: 0 },
           spacing: { after: 80 }
         }));
-      });
-    } else {
-      const text = (b.content || '').toString();
-      children.push(new Paragraph({ children: [new TextRun(text)] }));
+      }
+      continue;
     }
-  });
-  return children;
+    // paragraph
+    out.push(new Paragraph({
+      children: htmlToRuns(b.content || "")
+    }));
+  }
+  return out;
+}
+function htmlToRuns(input = "") {
+  // 1) keep only allowed inline tags
+  let s = extractInlineOnly(input);
+  // 2) normalize <b>/<i>, convert <br> to '\n'
+  s = s
+    .replace(/<\s*b(\s|>)/gi, "<strong$1").replace(/<\/\s*b\s*>/gi, "</strong>")
+    .replace(/<\s*i(\s|>)/gi, "<em$1").replace(/<\/\s*i\s*>/gi, "</em>")
+    .replace(/<br\s*\/?>/gi, "\n");
+
+  // 3) tokenize by our small set of tags
+  const tokens = s.split(/(<\/?strong>|<\/?em>)/i);
+  let bold = false, italics = false;
+  const runs = [];
+
+  for (const tok of tokens) {
+    const t = tok.toLowerCase();
+    if (t === "<strong>") { bold = true; continue; }
+    if (t === "</strong>") { bold = false; continue; }
+    if (t === "<em>")     { italics = true; continue; }
+    if (t === "</em>")    { italics = false; continue; }
+
+    // Text node: honor line breaks as DOCX breaks
+    const parts = tok.split("\n");
+    parts.forEach((segment, idx) => {
+      if (segment) runs.push(new TextRun({ text: segment, bold, italics }));
+      if (idx < parts.length - 1) runs.push(new TextRun({ break: 1 }));
+    });
+  }
+  return runs.length ? runs : [new TextRun("")];
 }
 
 export const exportPolicy = async (req, res) => {

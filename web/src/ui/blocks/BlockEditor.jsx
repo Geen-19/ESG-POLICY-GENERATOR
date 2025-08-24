@@ -9,6 +9,23 @@ import ListItem from "@tiptap/extension-list-item";
 import cx from "classnames";
 import PlaceHolder from "@tiptap/extension-placeholder";
 
+// tiny sanitizer that keeps only bold/italic/line breaks + simple blocks
+function sanitizeInline(html = "") {
+  let s = String(html);
+  s = s.replace(/<\s*b(\s|>)/gi, "<strong$1").replace(/<\/\s*b\s*>/gi, "</strong>");
+  s = s.replace(/<\s*i(\s|>)/gi, "<em$1").replace(/<\/\s*i\s*>/gi, "</em>");
+  s = s.replace(/<script[\s\S]*?<\/script>/gi, "");
+  s = s.replace(/\son\w+="[^"]*"/gi, "");
+  // allow only: p, h2, br, strong, em, ul, li
+  s = s.replace(/<(?!\/?(p|h2|br|strong|em|ul|li)\b)[^>]*>/gi, "");
+  return s;
+}
+const isHtml = (s) => /<[^>]+>/.test(String(s));
+const ensureWrapped = (html, tag) => {
+  const t = tag.toLowerCase(), h = String(html).trim();
+  return new RegExp(`^<${t}\\b[\\s\\S]*</${t}>$`, "i").test(h) ? h : `<${t}>${h}</${t}>`;
+};
+
 export default function BlockEditor({ block, onChange }) {
   const isHeading = block.type === "heading";
   const isPara = block.type === "paragraph";
@@ -16,7 +33,7 @@ export default function BlockEditor({ block, onChange }) {
 
   const initialText = useMemo(() => {
     if (isHeading) return String(block.title ?? block.content ?? "");
-    if (isPara)   return String(block.content ?? "");
+    if (isPara) return String(block.content ?? "");
     return Array.isArray(block.content) ? block.content.join("\n") : String(block.content ?? "");
   }, [block.id, block.type]); // ⬅️ only re-derive when identity/type changes
 
@@ -30,19 +47,23 @@ export default function BlockEditor({ block, onChange }) {
       Bold, Italic,
       BulletList, ListItem,
     ],
-    content: isList ? toListHtml(initialText) : toParagraphHtml(initialText, isHeading),
+    // If content already has HTML (after first save), keep it. Else build from text.
+    content: isList
+      ? toListHtml(Array.isArray(block.content) ? block.content : initialText)
+      : (isHtml(block.content) ? sanitizeInline(block.content) : toParagraphHtml(initialText, isHeading)),
     autofocus: false,
     onUpdate: ({ editor }) => {
       if (isApplyingRef.current) return; // ⬅️ prevent feedback loop
       if (isList) {
-        const items = fromListHtml(editor.getHTML());
+        const items = fromListHtmlPreserveMarks(editor.getHTML());
         onChange(items, undefined);
       } else if (isHeading) {
-        const txt = editor.getText({ blockSeparator: "\n" }).trimEnd();
-        onChange(txt, txt);
+        const html = sanitizeInline(editor.getHTML());
+        const plain = editor.getText({ blockSeparator: "\n" }).trimEnd();
+        onChange(html, plain); // content=HTML, title=plain
       } else {
-        const txt = editor.getText({ blockSeparator: "\n" }).trimEnd();
-        onChange(txt, undefined);
+        const html = sanitizeInline(editor.getHTML());
+        onChange(html, undefined); // content=HTML
       }
     },
     editorProps: {
@@ -53,7 +74,9 @@ export default function BlockEditor({ block, onChange }) {
   // Only push new content into TipTap when the block *identity/type* changes
   useEffect(() => {
     if (!editor) return;
-    const html = isList ? toListHtml(initialText) : toParagraphHtml(initialText, isHeading);
+    const html = isList
+      ? toListHtml(Array.isArray(block.content) ? block.content : initialText)
+      : (isHtml(block.content) ? sanitizeInline(block.content) : toParagraphHtml(initialText, isHeading));
 
     // ⚠️ Only set if different to avoid unnecessary transactions
     const current = editor.getHTML();
@@ -105,24 +128,28 @@ function btn(active) {
 /* helpers */
 function toParagraphHtml(text, isHeading) {
   const tag = isHeading ? "h2" : "p";
+  if (isHtml(text)) return ensureWrapped(sanitizeInline(text), tag);
   const safe = escapeHtml(text ?? "");
   return `<${tag}>${safe.replace(/\n/g, "<br/>")}</${tag}>`;
 }
-function toListHtml(text) {
-  const items = (text ?? "").split(/\r?\n/).map(s => s.trim()).filter(Boolean).map(escapeHtml);
-  return `<ul>${items.map(t => `<li>${t}</li>`).join("")}</ul>`;
+function toListHtml(input) {
+  const items = Array.isArray(input)
+    ? input
+    : String(input ?? "").split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+  return `<ul>${items.map(t =>
+    `<li>${
+      isHtml(t)
+        ? sanitizeInline(t)
+        : escapeHtml(String(t)).replace(/\n/g, "<br/>")
+    }</li>`
+  ).join("")}</ul>`;
 }
-function fromListHtml(html) {
-  const matches = [...html.matchAll(/<li[^>]*>([\s\S]*?)<\/li>/g)];
-    return matches.map(m => {
-    const inner = m[1] || "";
-    // normalize <br> first, then strip <p> and any residual tags
-    const withBreaks = inner.replace(/<br\s*\/?>/g, "\n");
-    const noPTags = withBreaks.replace(/<\/?p[^>]*>/g, "");
-    const plain = noPTags.replace(/<\/?[^>]+>/g, "");
-    return unescapeHtml(plain).trim();
-  }).filter(Boolean);
+function fromListHtmlPreserveMarks(html) {
+  const matches = [...String(html).matchAll(/<li[^>]*>([\s\S]*?)<\/li>/gi)];
+  return matches
+    .map(m => sanitizeInline(m[1] || "").trim())
+    .filter(Boolean);
 }
-function escapeHtml(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
-function unescapeHtml(s){return String(s).replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&amp;/g,"&");}
-function normalizeHtml(s){return String(s).replace(/\s+/g," ").trim();}
+function escapeHtml(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+function unescapeHtml(s) { return String(s).replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&"); }
+function normalizeHtml(s) { return String(s).replace(/\s+/g, " ").trim(); }

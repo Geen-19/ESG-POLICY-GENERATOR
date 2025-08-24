@@ -134,21 +134,62 @@ export default function GeneratePolicyPage() {
 }
 
 import { useQueryClient as useQC } from "@tanstack/react-query";
-function PreviewPane({ policyId }) {
+ function PreviewPane({ policyId }) {
   const qc = useQC();
   const policy = qc.getQueryData(["policy", policyId]);
   if (!policy) return null;
-  const blocks = [...(policy.blocks || [])].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-  return (
-    <div className="p-5 prose prose-zinc dark:prose-invert max-w-none">
-      {blocks.map((b) => {
-        if (b.type === "heading") return <h2 key={b.id} className="mt-4">{b.title || b.content || ""}</h2>;
-        if (b.type === "list") {
-          const items = Array.isArray(b.content) ? b.content : String(b.content || "").split("\n");
-          return <ul key={b.id} className="mt-2">{items.filter(Boolean).map((t, i) => <li key={i}>{t}</li>)}</ul>;
-        }
-        return <p key={b.id} className="mt-3 whitespace-pre-wrap">{String(b.content || "")}</p>;
-      })}
-    </div>
+
+  const blocks = useMemo(
+    () => [...(policy.blocks || [])].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
+    [policy.blocks]
   );
+
+  const bodyHtml = useMemo(() => renderBlocksToHtml(blocks), [blocks]);
+
+  return (
+    <div
+      className="p-5 prose prose-zinc dark:prose-invert max-w-none"
+      dangerouslySetInnerHTML={{ __html: bodyHtml }}
+    />
+  );
+}
+function allowInlineMarks(html = "") {
+  let s = String(html);
+  // normalize <b>/<i> to <strong>/<em>
+  s = s.replace(/<\s*b(\s|>)/gi, "<strong$1").replace(/<\/\s*b\s*>/gi, "</strong>");
+  s = s.replace(/<\s*i(\s|>)/gi, "<em$1").replace(/<\/\s*i\s*>/gi, "</em>");
+  // strip scripts and inline event handlers
+  s = s.replace(/<script[\s\S]*?<\/script>/gi, "");
+  s = s.replace(/\son\w+="[^"]*"/gi, "");
+  // allow only: p, h2, br, strong, em, ul, ol, li
+  s = s.replace(/<(?!\/?(p|h2|br|strong|em|ul|ol|li)\b)[^>]*>/gi, "");
+  return s;
+}
+function ensureBlockTag(html, tag) {
+  const t = tag.toLowerCase(), h = String(html).trim();
+  return new RegExp(`^<${t}\\b[\\s\\S]*</${t}>$`, "i").test(h) ? h : `<${t}>${h}</${t}>`;
+}
+function extractInlineOnly(html = "") {
+  let s = allowInlineMarks(html);
+  // drop any stray block tags inside headings
+  s = s.replace(/<\/?(p|h[1-6]|ul|ol|li)[^>]*>/gi, "");
+  return s.trim();
+}
+function renderBlocksToHtml(blocks = []) {
+  const parts = blocks.map((b) => {
+    if (b.type === "heading") {
+      const inline = extractInlineOnly(String(b.content ?? b.title ?? ""));
+      return `<h2 class="mt-4">${inline || ""}</h2>`;
+    }
+    if (b.type === "list") {
+      const items = Array.isArray(b.content)
+        ? b.content
+        : String(b.content || "").split("\n").map((s) => s.trim()).filter(Boolean);
+      return `<ul class="mt-2">${items.map((li) => `<li>${allowInlineMarks(li)}</li>`).join("")}</ul>`;
+    }
+    const html = allowInlineMarks(String(b.content ?? ""));
+    return ensureBlockTag(`<span class="not-prose"></span>${html}`, "p") // preserve prose spacing
+             .replace("<p>", `<p class="mt-3">`);
+  });
+  return parts.join("\n");
 }
