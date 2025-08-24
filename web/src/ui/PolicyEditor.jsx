@@ -1,11 +1,14 @@
 import { useMemo } from "react";
-import { createPortal } from "react-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { Plus, Trash2, GripVertical, Type, List as ListIcon, Pilcrow, ArrowUp, ArrowDown } from "lucide-react";
 import BlockEditor from "./blocks/BlockEditor";
+import React, {memo} from "react";
 import { cid } from "../lib/id";
 import cx from "classnames";
+
+const MemoBlockShell = memo(BlockShell);
+const MemoBlockEditor = memo(BlockEditor);
 const TYPES = [
   { value: "paragraph", label: "Paragraph", icon: Pilcrow },
   { value: "heading", label: "Heading", icon: Type },
@@ -15,8 +18,10 @@ const TYPES = [
 // GPU-friendly transform style for Draggable items
 function getItemStyle(style, snapshot) {
   const transform = style?.transform;
-  // force 3D transform for smoother frames
-  const translate = transform ? transform.replace(/translate\(([^)]+)\)/, "translate3d($1, 0)") : transform;
+  const translate =
+    snapshot.isDragging && transform
+      ? transform.replace(/translate\(([^)]+)\)/, "translate3d($1, 0)")
+      : transform;
   return {
     ...style,
     transform: translate,
@@ -98,24 +103,40 @@ export default function PolicyEditor({ policyId }) {
     <div className="pb-3" key={policyId}>
       <div className="px-4 py-2 text-xs text-zinc-500">Drag by the handle for smooth movement. Use ↑/↓ for keyboard reordering.</div>
 
-      <DragDropContext onDragEnd={onDragEnd}>
+      <DragDropContext
+        onDragStart={() => document.body.classList.add("dnd-grabbing")}
+        onDragEnd={(result) => {
+          document.body.classList.remove("dnd-grabbing");
+          const { destination, source } = result || {};
+          if (!destination) return;
+          if (
+            destination.droppableId === source.droppableId &&
+            destination.index === source.index
+          ) return;
+          const next = [...blocks];
+          const [moved] = next.splice(source.index, 1);
+          next.splice(destination.index, 0, moved);
+          setBlocks(next);
+        }}
+      >
         <Droppable
           droppableId="policyBlocks"
           direction="vertical"
           // Lightweight drag preview rendered outside layout to avoid reflow
           renderClone={(provided, snapshot, rubric) => {
-            const b = blocks[rubric.source.index];
-            return createPortal(
+            const b =
+              blocks.find(x => String(x.id) === rubric.draggableId) ??
+              blocks[rubric.source.index];
+            return (
               <div
                 ref={provided.innerRef}
                 {...provided.draggableProps}
                 {...provided.dragHandleProps}
                 className={cx("dnd-clone px-3 py-2 border", "border-zinc-200 dark:border-zinc-700")}
-                style={getItemStyle(provided.draggableProps.style, snapshot)}
+                style={provided.draggableProps.style}
               >
                 <ClonePreview block={b} />
-              </div>,
-              document.body
+              </div>
             );
           }}
         >
@@ -137,6 +158,7 @@ export default function PolicyEditor({ policyId }) {
                       style={getItemStyle(drag.draggableProps.style, snapshot)}
                     >
                       <BlockShell
+                        
                         dragHandleProps={{ ...drag.dragHandleProps, className: "toolbar-btn dnd-handle" }}
                         index={i}
                         block={b}
