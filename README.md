@@ -33,4 +33,11 @@ Create .env files using these templates. Do not commit real secrets.
 
 ---
 
+## 🚀 Quickstart (Local Dev)
+```
+    cd server
+    cp .env.example .env
+    npm install
+    npm run dev
 
+```
