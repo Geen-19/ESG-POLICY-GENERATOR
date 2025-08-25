@@ -150,7 +150,7 @@ function PreviewPane({ policyId }) {
     select: canonPolicy,
   });
   if (!policy) return null;
-
+  // updates the policy blocks every time they change
   const blocks = useMemo(
     () => [...(policy.blocks || [])].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
     [policy?.blocks]
@@ -198,7 +198,7 @@ function renderBlocksToHtml(blocks = []) {
     if (b.type === "list") {
       const items = Array.isArray(b.content)
         ? b.content
-        : String(b.content || "").split("\n").map((s) => s.trim()).filter(Boolean);
+        : String(b.content || "").split("\n"|",").map((s) => s.trim()).filter(Boolean);
       return `<ul class="mt-2">${items.map((li) => `<li>${allowInlineMarks(li)}</li>`).join("")}</ul>`;
     }
     const html = allowInlineMarks(String(b.content ?? ""));
