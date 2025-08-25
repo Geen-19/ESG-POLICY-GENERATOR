@@ -238,7 +238,6 @@ export const exportPolicy = async (req, res) => {
       const pdfBuffer = await exportPdfFromHtml(html);
 
       // Optional sanity check while debugging:
-      // console.log('PDF header:', pdfBuffer.slice(0,5).toString()); // should be "%PDF-"
 
       res.statusCode = 200;
       res.setHeader("Content-Type", "application/pdf");

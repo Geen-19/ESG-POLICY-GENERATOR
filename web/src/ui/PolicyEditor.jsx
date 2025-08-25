@@ -6,9 +6,7 @@ import BlockEditor from "./blocks/BlockEditor";
 import React, { memo } from "react";
 import { cid } from "../lib/id";
 import cx from "classnames";
-
-const MemoBlockShell = memo(BlockShell);
-const MemoBlockEditor = memo(BlockEditor);
+import { fetchPolicy } from "../api/policies";
 const TYPES = [
   { value: "paragraph", label: "Paragraph", icon: Pilcrow },
   { value: "heading", label: "Heading", icon: Type },
@@ -31,7 +29,13 @@ function getItemStyle(style, snapshot) {
 }
 
 export default function PolicyEditor({ policyId }) {
-  const { data: policy } = useQuery({ queryKey: ["policy", policyId], enabled: !!policyId, staleTime: 0 });
+  const { data: policy } = useQuery({
+    queryKey: ["policy", policyId],
+    queryFn: () => fetchPolicy(policyId),
+    enabled: !!policyId,
+    staleTime: 0,
+    initialData: () => qc.getQueryData(["policy", policyId]),
+  });
   const qc = useQueryClient();
 
   const blocks = useMemo(() => {

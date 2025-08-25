@@ -29,7 +29,6 @@ export default function PolicyActions({ policy }) {
       const url = `${API_BASE}/api/policies/${policy._id}/export?format=${format}`;
       const resp = await fetch(url, { method: 'GET' });
       if (!resp.ok) {
-            console.log(resp);
             throw new Error('Export failed');
       } 
 

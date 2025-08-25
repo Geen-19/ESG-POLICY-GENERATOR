@@ -40,7 +40,6 @@ export default function GeneratePolicyPage() {
       toast.success("Policy generated!");
     },
     onError: (err) => {
-      console.log(err);
 
       if (err?.message === "EMPTY_TOPIC") toast.error("Topic can't be empty.");
       
@@ -136,7 +135,13 @@ export default function GeneratePolicyPage() {
 import { useQueryClient as useQC } from "@tanstack/react-query";
  function PreviewPane({ policyId }) {
   const qc = useQC();
-  const policy = qc.getQueryData(["policy", policyId]);
+  const { data: policy } = useQuery({
+      queryKey: ["policy", policyId],
+      queryFn: () => fetchPolicy(policyId),
+      enabled: !!policyId,
+      staleTime: 0,
+      initialData: () => qc.getQueryData(["policy", policyId]),
+    });
   if (!policy) return null;
 
   const blocks = useMemo(
@@ -159,7 +164,6 @@ function allowInlineMarks(html = "") {
   s = s.replace(/<\s*i(\s|>)/gi, "<em$1").replace(/<\/\s*i\s*>/gi, "</em>");
   s = s.replace(/<script[\s\S]*?<\/script>/gi, "");
   s = s.replace(/\son\w+="[^"]*"/gi, "");
-  // allow only: p, br, strong, em, ul, ol, li  (🚫 no h2)
   s = s.replace(/<(?!\/?(p|br|strong|em|ul|ol|li)\b)[^>]*>/gi, "");
   return s;
 }

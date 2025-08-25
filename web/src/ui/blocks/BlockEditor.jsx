@@ -7,7 +7,6 @@ import Italic from "@tiptap/extension-italic";
 import BulletList from "@tiptap/extension-bullet-list";
 import ListItem from "@tiptap/extension-list-item";
 import cx from "classnames";
-import PlaceHolder from "@tiptap/extension-placeholder";
 
 // tiny sanitizer that keeps only bold/italic/line breaks + simple blocks
 function sanitizeInline(html = "") {
@@ -44,8 +43,6 @@ export default function BlockEditor({ block, onChange }) {
     extensions: [
       StarterKit.configure({ heading: false }),
       Heading.configure({ levels: [2] }),
-      Bold, Italic,
-      BulletList, ListItem,
     ],
     // If content already has HTML (after first save), keep it. Else build from text.
     content: isList
@@ -86,10 +83,8 @@ export default function BlockEditor({ block, onChange }) {
       // release the guard on next tick
       setTimeout(() => { isApplyingRef.current = false; }, 0);
     }
-  }, [editor, block.id, block.type]); // ⬅️ NOT on text every keystroke
-function stripHeadingTags(html = "") {
-  return String(html).replace(/<\/?h[1-6][^>]*>/gi, "");
-}
+  }, [editor, block.id, block.type]); 
+
 
   return (
     <div className="group">
@@ -127,7 +122,9 @@ function btn(active) {
   return cx("text-xs rounded px-2 py-1 border",
     active ? "bg-black text-white border-black" : "bg-white hover:bg-gray-50");
 }
-
+function stripHeadingTags(html = "") {
+  return String(html).replace(/<\/?h[1-6][^>]*>/gi, "");
+}
 /* helpers */
 function toParagraphHtml(text, isHeading) {
   const tag = isHeading ? "h2" : "p";
@@ -156,10 +153,9 @@ function toListHtml(input) {
 function fromListHtmlPreserveMarks(html) {
   const matches = [...String(html).matchAll(/<li[^>]*>([\s\S]*?)<\/li>/gi)];
   return matches
-    .map(m => sanitizeInline(stripHeadingTags(m[1] || "")).trim())
+    .map(m => sanitizeInline(m[1] || "").trim())
     .filter(Boolean);
 }
-
 function escapeHtml(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
 function unescapeHtml(s) { return String(s).replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&"); }
 function normalizeHtml(s) { return String(s).replace(/\s+/g, " ").trim(); }
