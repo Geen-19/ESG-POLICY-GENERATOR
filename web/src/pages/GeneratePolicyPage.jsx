@@ -5,6 +5,7 @@ import { generatePolicy, fetchPolicy, saveBlocks } from "../api/policies";
 import PolicyEditor from "../ui/PolicyEditor";
 import { getCounts } from "../lib/blocks";
 import PolicyActions from "./PolicyActions";
+import canonPolicy from "../lib/canonPolicy";
 export default function GeneratePolicyPage() {
   const qc = useQueryClient();
   const [topic, setTopic] = useState("");
@@ -24,12 +25,12 @@ export default function GeneratePolicyPage() {
         const e = new Error("EMPTY_TOPIC");
         throw e;
       }
-      return generatePolicy({topic : t});
+      return generatePolicy({ topic: t });
     },
     onSuccess: (policy) => {
       // clear other cache entries to avoid stale reads
       qc.removeQueries({ queryKey: ["policy"], exact: false });
-      qc.setQueryData(["policy", policy._id], policy);
+      qc.setQueryData(["policy", policy._id], canonPolicy(policy));
       setPolicyId(policy._id);
 
       // push id to URL so reload works
@@ -40,9 +41,10 @@ export default function GeneratePolicyPage() {
       toast.success("Policy generated!");
     },
     onError: (err) => {
+      console.log(err);
 
       if (err?.message === "EMPTY_TOPIC") toast.error("Topic can't be empty.");
-      
+
       else toast.error(err?.response?.data?.message || "Network error while generating.");
     },
   });
@@ -52,6 +54,7 @@ export default function GeneratePolicyPage() {
     queryKey: ["policy", policyId],
     queryFn: () => fetchPolicy(policyId),
     staleTime: 0,
+    select: canonPolicy,
   });
 
   const counts = useMemo(() => (policy ? getCounts(policy.blocks || []) : { words: 0, chars: 0 }), [policy]);
@@ -133,20 +136,24 @@ export default function GeneratePolicyPage() {
 }
 
 import { useQueryClient as useQC } from "@tanstack/react-query";
- function PreviewPane({ policyId }) {
+function PreviewPane({ policyId }) {
   const qc = useQC();
   const { data: policy } = useQuery({
-      queryKey: ["policy", policyId],
-      queryFn: () => fetchPolicy(policyId),
-      enabled: !!policyId,
-      staleTime: 0,
-      initialData: () => qc.getQueryData(["policy", policyId]),
-    });
+    queryKey: ["policy", policyId],
+    queryFn: () => fetchPolicy(policyId),
+    enabled: !!policyId,
+    staleTime: 0,
+    initialData: () => {
+      qc.getQueryData(["policy", policyId]);
+      return cached ? canonPolicy(cached) : undefined;
+    },
+    select: canonPolicy,
+  });
   if (!policy) return null;
 
   const blocks = useMemo(
     () => [...(policy.blocks || [])].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
-    [policy.blocks]
+    [policy?.blocks]
   );
 
   const bodyHtml = useMemo(() => renderBlocksToHtml(blocks), [blocks]);
@@ -180,10 +187,14 @@ function extractInlineOnly(html = "") {
 }
 function renderBlocksToHtml(blocks = []) {
   const parts = blocks.map((b) => {
-    if (b.type === "heading") {
-      const inline = extractInlineOnly(String(b.content ?? b.title ?? ""));
-      return `<h2 class="mt-4">${inline || ""}</h2>`;
-    }
+    if (b.type === "heading" || /<\s*h[1-6]\b/i.test(String(b.content))) {
+     // prefer non-empty title; else content
+     const source = (typeof b.title === "string" && b.title.trim().length)
+       ? b.title
+       : String(b.content ?? "");
+     const inline = extractInlineOnly(source);
+     return `<h2 class="mt-4">${inline || ""}</h2>`;
+   }
     if (b.type === "list") {
       const items = Array.isArray(b.content)
         ? b.content
@@ -192,7 +203,7 @@ function renderBlocksToHtml(blocks = []) {
     }
     const html = allowInlineMarks(String(b.content ?? ""));
     return ensureBlockTag(`<span class="not-prose"></span>${html}`, "p") // preserve prose spacing
-             .replace("<p>", `<p class="mt-3">`);
+      .replace("<p>", `<p class="mt-3">`);
   });
   return parts.join("\n");
 }
